@@ -36,9 +36,19 @@
           p.caldav
           p.icalendar
         ]);
+        pkg = pkgs.writeShellScriptBin "caldav-canvas-gradescope" ''
+          ${python.interpreter} ${toString ./.}/main.py "$@"
+        '';
       in {
         devShells.default = pkgs.mkShell {
           packages = [ python ];
+        };
+
+        packages.default = pkg;
+
+        apps.default = {
+          type = "app";
+          program = "${pkg}/bin/caldav-canvas-gradescope";
         };
       }
     );
