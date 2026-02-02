@@ -17,15 +17,16 @@ def sync():
 
 def sync_course(connection, course_id, course):
     assignments = connection.account.get_assignments(course_id)
-    return [make_todo(course, assignment) for assignment in assignments]
+    return [make_todo(course_id, course, assignment) for assignment in assignments]
 
-def make_todo(course, assignment):
+def make_todo(course_id, course, assignment):
     todo = icalendar.cal.Todo()
     todo.uid = f"gradescope-{assignment.assignment_id}"
     todo.end = assignment.due_date
     # NOTE: Gradescope's due date is inclusive (I think), but iCalendar is exclusive; it's probably fine since the error is in the safe direction.
     todo.categories = ["Gradescope", course.name]
     todo['summary'] = assignment.name
+    todo['description'] = f"https://www.gradescope.com/courses/{course_id}/assignments/{assignment.assignment_id}"
     todo['status'] = 'COMPLETED' if assignment.submissions_status == "Submitted" else "NEEDS-ACTION"
     return todo
 
