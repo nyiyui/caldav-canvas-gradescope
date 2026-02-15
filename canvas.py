@@ -76,14 +76,22 @@ def _absolute_url(base_url: str, url: str) -> str:
     return base_url.rstrip("/") + "/" + url.lstrip("/")
 
 
-def _iter_planner_items(base_url: str, cookie_header: str, start_date: datetime.date, end_date: datetime.date) -> Iterable[Dict]:
+def _iter_planner_items(
+    base_url: str,
+    cookie_header: str,
+    start_date: datetime.date,
+    end_date: datetime.date,
+    *,
+    planner_filter: Optional[str] = None,
+) -> Iterable[Dict]:
     url = base_url.rstrip("/") + "/api/v1/planner/items"
     params = {
         "start_date": start_date.isoformat(),
         "end_date": end_date.isoformat(),
-        "filter": "incomplete_items",
         "per_page": "100",
     }
+    if planner_filter:
+        params["filter"] = planner_filter
 
     headers = {
         "Cookie": cookie_header,
@@ -126,28 +134,36 @@ def sync() -> List[icalendar.cal.Todo]:
     end_date = start_date + datetime.timedelta(days=183)
 
     todos: List[icalendar.cal.Todo] = []
-    for item in _iter_planner_items(base_url, cookie_header, start_date, end_date):
-        plannable = item.get("plannable") or {}
-        due = _plannable_due_at(item)
-        if due is None:
-            continue
+    for planner_filter in ("incomplete_items", "complete_items"):
+        for item in _iter_planner_items(
+            base_url,
+            cookie_header,
+            start_date,
+            end_date,
+            planner_filter=planner_filter,
+        ):
+            plannable = item.get("plannable") or {}
+            due = _plannable_due_at(item)
+            if due is None:
+                continue
 
-        plannable_type = str(item.get("plannable_type") or "plannable")
-        plannable_id = str(item.get("plannable_id") or plannable.get("id") or "unknown")
-        course_id = item.get("course_id")
+            plannable_type = str(item.get("plannable_type") or "plannable")
+            plannable_id = str(item.get("plannable_id") or plannable.get("id") or "unknown")
+            course_id = item.get("course_id")
 
-        todo = icalendar.cal.Todo()
-        todo.uid = f"canvas-{plannable_type}-{plannable_id}"
-        todo.end = due
-        todo.categories = ["Canvas"] + ([f"course-{course_id}"] if course_id else [])
-        todo["summary"] = _plannable_title(plannable)
+            todo = icalendar.cal.Todo()
+            todo.uid = f"canvas-{plannable_type}-{plannable_id}"
+            todo.end = due
+            todo.categories = ["Canvas"] + ([f"course-{course_id}"] if course_id else [])
+            todo["summary"] = _plannable_title(plannable)
 
-        html_url = item.get("html_url") or plannable.get("html_url") or ""
-        todo["description"] = _absolute_url(base_url, str(html_url))
+            html_url = item.get("html_url") or plannable.get("html_url") or ""
+            todo["description"] = _absolute_url(base_url, str(html_url))
 
-        marked_complete = bool((item.get("planner_override") or {}).get("marked_complete"))
-        todo["status"] = "COMPLETED" if marked_complete else "NEEDS-ACTION"
-        todos.append(todo)
+            marked_complete = bool((item.get("planner_override") or {}).get("marked_complete"))
+            is_complete = marked_complete or (planner_filter == "complete_items")
+            todo["status"] = "COMPLETED" if is_complete else "NEEDS-ACTION"
+            todos.append(todo)
 
     return todos
 
