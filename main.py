@@ -18,7 +18,7 @@ def _merge_by_uid(todo_lists):
 
 
 def _make_failure_todo(source: str, exc: Exception) -> icalendar.cal.Todo:
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = datetime.datetime.now().astimezone()
     due = now + datetime.timedelta(hours=24)
 
     todo = icalendar.cal.Todo()
@@ -29,6 +29,22 @@ def _make_failure_todo(source: str, exc: Exception) -> icalendar.cal.Todo:
     todo["description"] = f"{source} sync failed at {now.isoformat()}: {type(exc).__name__}: {exc}"
     todo["status"] = "NEEDS-ACTION"
     return todo
+
+
+def _to_local_dt(dt: datetime.datetime, local_tz: datetime.tzinfo) -> datetime.datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=local_tz)
+    return dt.astimezone(local_tz)
+
+
+def _force_todo_local_timezone(todo: icalendar.cal.Todo, local_tz: datetime.tzinfo) -> None:
+    for k in ("DUE", "DTSTART", "DTEND", "COMPLETED"):
+        v = todo.get(k)
+        if v is None:
+            continue
+        dt = getattr(v, "dt", v)
+        if isinstance(dt, datetime.datetime):
+            todo[k] = _to_local_dt(dt, local_tz)
 
 
 if __name__ == "__main__":
@@ -48,6 +64,11 @@ if __name__ == "__main__":
         todo_lists.append([_make_failure_todo("canvas", e)])
 
     todos = _merge_by_uid(todo_lists)
+    local_tz = datetime.datetime.now().astimezone().tzinfo
+    if local_tz is not None:
+        for todo in todos:
+            _force_todo_local_timezone(todo, local_tz)
+
     for todo in todos:
         print(todo)
 
