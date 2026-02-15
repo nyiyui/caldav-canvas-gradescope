@@ -12,15 +12,7 @@ _LINK_NEXT_RE = re.compile(r'<([^>]+)>;\s*rel="next"')
 
 
 def _read_cookie_header() -> Optional[str]:
-    # Prefer env var so secrets aren't stored on disk.
-    env = os.environ.get("CANVAS_COOKIE_HEADER")
-    if env:
-        return env.strip()
-
-    p = Path(__file__).with_name("cookie-header-content.txt")
-    if not p.exists():
-        return None
-    return p.read_text(encoding="utf-8").strip() or None
+    return os.environ["CANVAS_COOKIE_HEADER"].strip()
 
 
 def _parse_iso_datetime(s: str) -> Optional[datetime.datetime]:
