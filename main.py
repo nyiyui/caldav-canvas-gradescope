@@ -44,7 +44,7 @@ def _force_todo_local_timezone(todo: icalendar.cal.Todo, local_tz: datetime.tzin
             continue
         dt = getattr(v, "dt", v)
         if isinstance(dt, datetime.datetime):
-            todo[k] = _to_local_dt(dt, local_tz)
+            todo[k] = icalendar.prop.vDDDTypes(_to_local_dt(dt, local_tz))
 
 
 if __name__ == "__main__":
