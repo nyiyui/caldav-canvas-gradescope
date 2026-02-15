@@ -20,7 +20,6 @@ def sync_course(connection, course_id, course):
     return [make_todo(course_id, course, assignment) for assignment in assignments]
 
 def make_todo(course_id, course, assignment):
-    raise RuntimeError('fake')
     todo = icalendar.cal.Todo()
     todo.uid = f"gradescope-{assignment.assignment_id}"
     todo.end = assignment.due_date
