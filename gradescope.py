@@ -28,7 +28,7 @@ def make_todo(course_id, course, assignment):
     todo['summary'] = assignment.name
     todo['description'] = f"https://www.gradescope.com/courses/{course_id}/assignments/{assignment.assignment_id}"
     todo['status'] = 'COMPLETED' if assignment.submissions_status.startswith("Submitted") else "NEEDS-ACTION"
-    print(todo)
+    print(assignment.submissions_status)
     return todo
 
 if __name__ == '__main__':
