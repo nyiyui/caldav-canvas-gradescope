@@ -19,6 +19,13 @@ def sync_course(connection, course_id, course):
     assignments = connection.account.get_assignments(course_id)
     return [make_todo(course_id, course, assignment) for assignment in assignments]
 
+def status_is_completed(status: str) -> bool:
+    if status == 'Submitted':
+        return True
+    if 'Late' in status:
+        return True
+    return False
+
 def make_todo(course_id, course, assignment):
     todo = icalendar.cal.Todo()
     todo.uid = f"gradescope-{assignment.assignment_id}"
@@ -27,8 +34,7 @@ def make_todo(course_id, course, assignment):
     todo.categories = ["Gradescope", course.name]
     todo['summary'] = assignment.name
     todo['description'] = f"https://www.gradescope.com/courses/{course_id}/assignments/{assignment.assignment_id}"
-    todo['status'] = 'COMPLETED' if assignment.submissions_status.startswith("Submitted") else "NEEDS-ACTION"
-    print(assignment.submissions_status)
+    todo['status'] = 'COMPLETED' if status_is_completed(assignment.submissions_status) else "NEEDS-ACTION"
     return todo
 
 if __name__ == '__main__':
