@@ -1,11 +1,12 @@
 import datetime
+import logging
 
 import icalendar
+import vobject.icalendar
 
 import caldav_sync
 import canvas
 import gradescope
-
 
 def _merge_by_uid(todo_lists):
     merged = {}
@@ -31,25 +32,18 @@ def _make_failure_todo(source: str, exc: Exception) -> icalendar.cal.Todo:
     return todo
 
 
-def _to_local_dt(dt: datetime.datetime, local_tz: datetime.tzinfo) -> datetime.datetime:
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=local_tz)
-    return dt.astimezone(local_tz)
-
-
-def _force_todo_local_timezone(todo: icalendar.cal.Todo, local_tz: datetime.tzinfo) -> None:
-    for k in ("DUE", "DTSTART", "DTEND", "COMPLETED"):
-        v = todo.get(k)
-        if v is None:
-            continue
-        dt = getattr(v, "dt", v)
-        if isinstance(dt, datetime.datetime):
-            todo[k] = icalendar.prop.vDDDTypes(_to_local_dt(dt, local_tz))
-
-
 if __name__ == "__main__":
     errors = []
     todo_lists = []
+
+    # Register local timezone name in vobject to avoid KeyError: 'EDT'
+    # when caldav or other libs use vobject to parse/serialize.
+    local_now = datetime.datetime.now().astimezone()
+    local_tz = local_now.tzinfo
+    if local_tz:
+        tzname = local_now.tzname()
+        if tzname:
+            vobject.icalendar.registerTzid(tzname, local_tz)
 
     try:
         todo_lists.append(gradescope.sync())
@@ -64,10 +58,6 @@ if __name__ == "__main__":
         todo_lists.append([_make_failure_todo("canvas", e)])
 
     todos = _merge_by_uid(todo_lists)
-    local_tz = datetime.datetime.now().astimezone().tzinfo
-    if local_tz is not None:
-        for todo in todos:
-            _force_todo_local_timezone(todo, local_tz)
 
     for todo in todos:
         print(todo)

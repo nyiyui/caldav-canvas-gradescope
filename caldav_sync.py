@@ -37,23 +37,24 @@ def _normalize_dt(val) -> Optional[datetime]:
 
     Accepts icalendar vDDDTypes (which behaves like datetime), date, or
     datetime. Returns None if value is None or can't be interpreted.
+    All results are converted to UTC-aware datetimes.
     """
     if val is None:
         return None
     # icalendar often wraps datetimes in types that behave like datetime
     try:
-        if isinstance(val, datetime):
-            return val
-        if isinstance(val, date):
-            # convert date -> datetime at midnight (naive)
-            return datetime(val.year, val.month, val.day)
-        # some wrappers expose .dt
-        if hasattr(val, 'dt'):
-            dt = getattr(val, 'dt')
-            if isinstance(dt, (datetime, date)):
-                if isinstance(dt, date) and not isinstance(dt, datetime):
-                    return datetime(dt.year, dt.month, dt.day)
-                return dt
+        dt = val
+        if hasattr(val, "dt"):
+            dt = getattr(val, "dt")
+
+        if isinstance(dt, datetime):
+            if dt.tzinfo is None:
+                # Naive datetime: assume it's UTC for comparison purposes
+                dt = dt.replace(tzinfo=datetime.timezone.utc)
+            return dt.astimezone(datetime.timezone.utc)
+        if isinstance(dt, date):
+            # date -> datetime at midnight UTC
+            return datetime(dt.year, dt.month, dt.day, tzinfo=datetime.timezone.utc)
     except Exception:
         pass
     return None
